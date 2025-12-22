@@ -8,6 +8,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use crate::actor::IndexerActorArguments;
 
 pub mod actor;
+pub mod git;
 
 #[tokio::main]
 async fn main() {
