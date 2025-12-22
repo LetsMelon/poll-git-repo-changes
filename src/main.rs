@@ -22,18 +22,26 @@ async fn main() {
         IndexerActorArguments::new(
             "https://github.com/rust-lang/crates.io-index.git".to_string(),
             None,
-            Duration::from_secs(45),
         ),
     )
     .await
     .unwrap();
 
-    // TODO also implement StartAutoIndex and StopAutoIndex messages
     indexer_actor
-        .cast(actor::IndexerActorMessage::AutoIndex)
+        .cast(actor::IndexerActorMessage::StartAutoIndex(
+            Duration::from_secs(25),
+        ))
         .unwrap();
 
-    tokio::time::sleep(tokio::time::Duration::from_mins(10)).await;
+    tokio::time::sleep(tokio::time::Duration::from_mins(1)).await;
+
+    indexer_actor
+        .cast(actor::IndexerActorMessage::StartAutoIndex(
+            Duration::from_secs(10),
+        ))
+        .unwrap();
+
+    tokio::time::sleep(tokio::time::Duration::from_mins(1)).await;
 
     indexer_actor.stop(None);
     indexer_handle.await.unwrap();

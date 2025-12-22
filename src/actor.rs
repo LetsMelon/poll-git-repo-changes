@@ -15,33 +15,30 @@ use ractor::{Actor, ActorProcessingErr, ActorRef, concurrency::Duration};
 #[derive(Debug)]
 pub enum IndexerActorMessage {
     Index,
-    AutoIndex,
+    AutoIndex(Duration),
+    StartAutoIndex(Duration),
+    StopAutoIndex,
 }
 
 pub struct IndexerActor;
 
 #[derive(Debug)]
 pub struct IndexerActorState {
-    git_url: String,
+    _git_url: String,
     repository: PathBuf,
     last_indexed: Option<Instant>,
     last_commit_hash: Option<String>,
-    timer_interval: Duration,
+    timer_interval: Option<Duration>,
 }
 
 pub struct IndexerActorArguments {
     git_url: String,
     dir_name: Option<String>,
-    timer_interval: Duration,
 }
 
 impl IndexerActorArguments {
-    pub fn new(git_url: String, dir_name: Option<String>, timer_interval: Duration) -> Self {
-        Self {
-            git_url,
-            dir_name,
-            timer_interval,
-        }
+    pub fn new(git_url: String, dir_name: Option<String>) -> Self {
+        Self { git_url, dir_name }
     }
 }
 
@@ -205,11 +202,11 @@ impl Actor for IndexerActor {
         };
 
         Ok(IndexerActorState {
-            git_url: arguments.git_url,
+            _git_url: arguments.git_url,
             repository: PathBuf::from(dir_name),
             last_indexed: None,
             last_commit_hash,
-            timer_interval: arguments.timer_interval,
+            timer_interval: None,
         })
     }
 
@@ -222,7 +219,7 @@ impl Actor for IndexerActor {
         log::info!("Handling message: '{:?}'", message);
 
         match message {
-            IndexerActorMessage::AutoIndex | IndexerActorMessage::Index => {
+            IndexerActorMessage::Index => {
                 state.last_indexed = Some(Instant::now());
 
                 // pull latest changes from remote
@@ -266,10 +263,27 @@ impl Actor for IndexerActor {
 
                 state.last_commit_hash = current_commit_hash.clone();
             }
-        }
+            IndexerActorMessage::AutoIndex(duration) => {
+                if let Some(interval) = state.timer_interval
+                    && duration == interval
+                {
+                    myself.cast(IndexerActorMessage::Index)?;
 
-        if matches!(message, IndexerActorMessage::AutoIndex) {
-            myself.send_after(state.timer_interval, || IndexerActorMessage::AutoIndex);
+                    // schedule next auto-index
+                    myself.send_after(interval, move || IndexerActorMessage::AutoIndex(duration));
+                } else {
+                    log::info!("Auto-indexing interval changed or stopped, not indexing.");
+                }
+            }
+            IndexerActorMessage::StartAutoIndex(duration) => {
+                log::info!("Starting auto-indexing every {:?}.", duration);
+                state.timer_interval = Some(duration);
+                myself.send_after(duration, move || IndexerActorMessage::AutoIndex(duration));
+            }
+            IndexerActorMessage::StopAutoIndex => {
+                log::info!("Stopping auto-indexing.");
+                state.timer_interval = None;
+            }
         }
 
         Ok(())
