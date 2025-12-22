@@ -1,7 +1,6 @@
 use std::{
     path::PathBuf,
     process::{ExitStatus, Stdio},
-    sync::Arc,
 };
 
 use tokio::{
@@ -37,7 +36,7 @@ impl GitService {
         args: &[&str],
         run_in_parent: bool,
     ) -> Result<ExitStatus, std::io::Error> {
-        let program = Arc::new(program.to_string());
+        let program = program.to_string();
 
         let mut child = Command::new(program.clone().as_str())
             .args(args)
