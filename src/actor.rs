@@ -264,6 +264,7 @@ impl Actor for IndexerActor {
                 state.last_commit_hash = current_commit_hash;
             }
             IndexerActorMessage::AutoIndex(duration) => {
+                // check if the auto index originated from the current interval
                 if let Some(interval) = state.timer_interval
                     && duration == interval
                 {
