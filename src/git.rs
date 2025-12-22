@@ -7,7 +7,7 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
-use tracing::log;
+use tracing::{instrument, log};
 
 #[derive(Debug)]
 pub enum GitError {
@@ -30,6 +30,7 @@ impl GitService {
         Self { repository_path }
     }
 
+    #[instrument(skip(self))]
     async fn call_command(
         &self,
         program: &str,
