@@ -1,0 +1,16 @@
+[package]
+name = "actor_http_test"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = "0.1.89"
+gix = { version = "0.75.0", features = [
+    "blocking-network-client",
+    "blocking-http-transport-reqwest-rust-tls",
+    "tracing",
+] }
+ractor = { version = "0.15.10", features = ["async-trait"] }
+tokio = { version = "1.48.0", features = ["full"] }
+tracing = { version = "0.1.44", features = ["log"] }
+tracing-subscriber = { version = "0.3.22", features = ["fmt", "env-filter"] }
