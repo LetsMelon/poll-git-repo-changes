@@ -261,7 +261,7 @@ impl Actor for IndexerActor {
                     }
                 }
 
-                state.last_commit_hash = current_commit_hash.clone();
+                state.last_commit_hash = current_commit_hash;
             }
             IndexerActorMessage::AutoIndex(duration) => {
                 if let Some(interval) = state.timer_interval
