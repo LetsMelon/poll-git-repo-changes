@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use ractor::Actor;
 use tokio::time::Duration as TDuration;
+
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -33,19 +34,7 @@ async fn main() {
         .cast(IndexerActorMessage::StartAutoIndex(Duration::from_secs(25)))
         .unwrap();
 
-    tokio::time::sleep(TDuration::from_mins(1)).await;
-
-    indexer_actor
-        .cast(IndexerActorMessage::StartAutoIndex(Duration::from_secs(10)))
-        .unwrap();
-
-    tokio::time::sleep(TDuration::from_mins(1)).await;
-
-    indexer_actor
-        .cast(IndexerActorMessage::StopAutoIndex)
-        .unwrap();
-
-    tokio::time::sleep(TDuration::from_millis(50)).await;
+    tokio::time::sleep(TDuration::from_mins(2)).await;
 
     indexer_actor.stop(None);
     indexer_handle.await.unwrap();
