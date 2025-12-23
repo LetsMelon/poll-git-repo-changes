@@ -137,15 +137,15 @@ impl Actor for IndexerActor {
                     (Some(old_commit), Some(current_commit)) if old_commit != current_commit => {
                         log::debug!("Diffing commits {} -> {}", old_commit, current_commit);
 
-                        let changed_files = state
+                        let patches = state
                             .git_service
-                            .diff_commits_name_only(&old_commit, &current_commit)
+                            .diff_commits(&old_commit, &current_commit)
                             .await
                             .unwrap();
 
-                        for file in changed_files {
-                            // TODO store in database
-                            log::info!("Changed file: {}", file);
+                        for patch in patches {
+                            // TODO store in database or do something with it
+                            log::debug!("Patch: {:?}", patch);
                         }
                     }
                     (Some(_), Some(_)) => {

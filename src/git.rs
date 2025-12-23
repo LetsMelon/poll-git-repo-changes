@@ -1,8 +1,11 @@
 use std::{
+    collections::HashSet,
     path::PathBuf,
     process::{ExitStatus, Stdio},
 };
 
+use gitpatch::{ParseError, Patch};
+use serde_json::Value;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -12,6 +15,7 @@ use tracing::{instrument, log};
 #[derive(Debug)]
 pub enum GitError {
     CommandError(std::io::Error),
+    DiffParseError(String),
 }
 
 impl From<std::io::Error> for GitError {
@@ -20,12 +24,18 @@ impl From<std::io::Error> for GitError {
     }
 }
 
+impl<'a> From<ParseError<'a>> for GitError {
+    fn from(value: ParseError<'a>) -> Self {
+        GitError::DiffParseError(value.to_string())
+    }
+}
+
 #[derive(Debug)]
 pub struct GitService {
     repository_path: PathBuf,
 }
 
-impl GitService {
+impl<'a> GitService {
     pub fn new(repository_path: PathBuf) -> Self {
         Self { repository_path }
     }
@@ -164,4 +174,51 @@ impl GitService {
             )))
         }
     }
+
+    pub async fn diff_commits(&self, c1: &str, c2: &str) -> Result<HashSet<DiffAction>, GitError> {
+        let out = Command::new("git")
+            .args(&["diff", c1, c2])
+            .current_dir(&self.repository_path)
+            .output()
+            .await?;
+
+        if !out.status.success() {
+            return Err(GitError::CommandError(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Git diff command failed with exit status: {}", out.status),
+            )));
+        }
+
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        let patches = Patch::from_multiple(&stdout)?;
+
+        let actions = patches
+            .iter()
+            .flat_map(|patch| patch.hunks.iter())
+            .flat_map(|hunk| hunk.lines.iter())
+            .filter_map(|line| match line {
+                // TODO how to handle Update? Remove followed by an Add?
+                gitpatch::Line::Add(raw) => {
+                    let value: Value = serde_json::from_str(&raw).unwrap();
+                    let name = value["name"].as_str().unwrap().to_string();
+                    Some(DiffAction::Add(name))
+                }
+                gitpatch::Line::Remove(raw) => {
+                    let value: Value = serde_json::from_str(&raw).unwrap();
+                    let name = value["name"].as_str().unwrap().to_string();
+                    Some(DiffAction::Remove(name))
+                }
+                gitpatch::Line::Context(_) => None,
+            })
+            .collect::<HashSet<_>>();
+
+        Ok(actions)
+    }
+}
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub enum DiffAction {
+    Add(String),
+    Update(String),
+    Remove(String),
 }
