@@ -1,11 +1,12 @@
 use std::time::Duration;
 
 use ractor::Actor;
+use tokio::time::Duration as TDuration;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use crate::actor::IndexerActorArguments;
+use crate::actor::{IndexerActor, IndexerActorArguments, IndexerActorMessage};
 
 pub mod actor;
 pub mod git;
@@ -19,7 +20,7 @@ async fn main() {
 
     let (indexer_actor, indexer_handle) = Actor::spawn(
         None,
-        actor::IndexerActor,
+        IndexerActor,
         IndexerActorArguments::new(
             "https://github.com/rust-lang/crates.io-index.git".to_string(),
             None,
@@ -29,20 +30,22 @@ async fn main() {
     .unwrap();
 
     indexer_actor
-        .cast(actor::IndexerActorMessage::StartAutoIndex(
-            Duration::from_secs(25),
-        ))
+        .cast(IndexerActorMessage::StartAutoIndex(Duration::from_secs(25)))
         .unwrap();
 
-    tokio::time::sleep(tokio::time::Duration::from_mins(1)).await;
+    tokio::time::sleep(TDuration::from_mins(1)).await;
 
     indexer_actor
-        .cast(actor::IndexerActorMessage::StartAutoIndex(
-            Duration::from_secs(10),
-        ))
+        .cast(IndexerActorMessage::StartAutoIndex(Duration::from_secs(10)))
         .unwrap();
 
-    tokio::time::sleep(tokio::time::Duration::from_mins(1)).await;
+    tokio::time::sleep(TDuration::from_mins(1)).await;
+
+    indexer_actor
+        .cast(IndexerActorMessage::StopAutoIndex)
+        .unwrap();
+
+    tokio::time::sleep(TDuration::from_millis(50)).await;
 
     indexer_actor.stop(None);
     indexer_handle.await.unwrap();
