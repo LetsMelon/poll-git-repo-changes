@@ -1,0 +1,19 @@
+[package]
+name = "license_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.8"
+chrono = { version = "0.4.42", default-features = false, features = [
+    "serde",
+    "std",
+    "now",
+] }
+hex = "0.4.3"
+license_common = { path = "../license_common" }
+rand = "0.8.5"
+rsa = "0.9.9"
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true, features = ["log"] }
+tracing-subscriber = { workspace = true, features = ["fmt", "env-filter"] }
